@@ -1,0 +1,37 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI SEO Action Prioritizer</title>
+<style>
+:root{color-scheme:light dark;--bg:#fff;--fg:#1a1a2e;--mut:#667;--line:#dde;--acc:#2f5bea;--card:#f5f7ff}
+@media(prefers-color-scheme:dark){:root{--bg:#14161f;--fg:#eceef8;--mut:#99a;--line:#2a2e40;--acc:#7b9bff;--card:#1d2030}}
+*{box-sizing:border-box}body{margin:0;font:15px/1.5 system-ui,sans-serif;background:var(--bg);color:var(--fg)}
+main{max-width:1100px;margin:auto;padding:16px}h1{margin:.2em 0}h2{margin-top:1.6em;font-size:1.1em}
+.muted,small{color:var(--mut)}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}label{display:block;font-size:13px;color:var(--mut)}
+input,select,textarea,button{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+button{cursor:pointer;background:var(--acc);color:#fff;border:0}button.sec{background:none;color:var(--fg);border:1px solid var(--line)}
+:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.card{background:var(--card);padding:10px;border-radius:8px}.k{font-size:12px;color:var(--mut)}.v{font-size:20px;font-weight:600}
+.box{background:var(--card);padding:8px 12px;border-radius:8px;margin:6px 0}.banner{background:#fff3cd;color:#533f03;padding:8px 12px;border-radius:8px;margin:8px 0}
+.wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:760px}th,td{text-align:left;padding:6px;border-bottom:1px solid var(--line);vertical-align:top}
+.det td{border-bottom:2px solid var(--line)}textarea{width:100%;min-height:60px}
+</style></head><body><main>
+<h1>AI SEO Action Prioritizer</h1>
+<p>Upload a Search Console export and/or a crawl export (for example from Screaming Frog) to get a ranked, evidence-backed list of SEO tasks. Everything runs in your browser; your files are not uploaded anywhere.</p>
+<div id="demo" class="banner" hidden><b>DEMO DATA.</b> These numbers are made-up samples, not a real website. Uploading your own file replaces them.</div>
+<h2>1. Project</h2>
+<div class="row"><div><label for="pname">Project name</label><input id="pname"></div><div><label for="purl">Website URL</label><input id="purl" placeholder="https://example.com"></div>
+<button id="demobtn" class="sec">Load demo data</button><button id="reset" class="sec">Delete project</button></div>
+<p class="muted"><small>Saved only in this browser on this device. This is not a cloud backup; clearing browser data deletes it. Limits: .csv files up to 5 MB and 50,000 rows.</small></p>
+<h2>2. Upload data</h2>
+<div class="row"><div><label for="gscfile">Search Console CSV (needs Clicks and Impressions columns)</label><input id="gscfile" type="file" accept=".csv"></div>
+<div><label for="crawlfile">Crawl CSV (needs an Address or URL column)</label><input id="crawlfile" type="file" accept=".csv"></div></div>
+<h2>3. Data quality report</h2><div id="quality"></div>
+<h2>4. Dashboard</h2><div id="cards" class="cards"></div>
+<p class="muted"><small>Average position is weighted by impressions. Overall CTR is total clicks divided by total impressions. Metrics only appear when the matching file is uploaded.</small></p>
+<h2>5. Action plan</h2>
+<div class="row"><div><label for="q">Search</label><input id="q" type="search"></div>
+<div><label for="fp">Priority</label><select id="fp"><option value="">All</option><option>P1</option><option>P2</option><option>P3</option><option>P4</option></select></div>
+<div><label for="fs">Status</label><select id="fs"><option value="">All</option><option>To Do</option><option>In Progress</option><option>Completed</option><option>Ignored</option></select></div>
+<button id="export">Export filtered tasks (CSV)</button></div>
+<div class="wrap"><table><thead><tr><th>Priority</th><th>Category</th><th>Affected</th><th>Finding</th><th>Confidence</th><th>Effort</th><th>Status</th><th>Owner</th></tr></thead><tbody id="rows"></tbody></table></div>
+<p class="muted"><small>Priority comes from a fixed scoring formula, not from AI. Findings marked "review flag" need human judgement. Nothing here predicts rankings or traffic. Internal linking, redirect chains, canonicals and AI explanations are not built yet.</small></p>
+</main><script type="module" src="app.js"></script></body></html>
