@@ -12,7 +12,7 @@ button{cursor:pointer;background:var(--acc);color:#fff;border:0}button.sec{backg
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.card{background:var(--card);padding:10px;border-radius:8px}.k{font-size:12px;color:var(--mut)}.v{font-size:20px;font-weight:600}
 .box{background:var(--card);padding:8px 12px;border-radius:8px;margin:6px 0}.banner{background:#fff3cd;color:#533f03;padding:8px 12px;border-radius:8px;margin:8px 0}
 .wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:760px}th,td{text-align:left;padding:6px;border-bottom:1px solid var(--line);vertical-align:top}
-.det td{border-bottom:2px solid var(--line)}textarea{width:100%;min-height:60px}
+.bar{display:flex;align-items:center;gap:8px;margin:4px 0}.bar span{width:24px}.bar i{display:block;height:14px;background:var(--acc);border-radius:4px;min-width:2px}.det td{border-bottom:2px solid var(--line)}textarea{width:100%;min-height:60px}
 </style></head><body><main>
 <h1>AI SEO Action Prioritizer</h1>
 <p>Upload a Search Console export and/or a crawl export (for example from Screaming Frog) to get a ranked, evidence-backed list of SEO tasks. Everything runs in your browser; your files are not uploaded anywhere.</p>
@@ -22,10 +22,10 @@ button{cursor:pointer;background:var(--acc);color:#fff;border:0}button.sec{backg
 <button id="demobtn" class="sec">Load demo data</button><button id="reset" class="sec">Delete project</button></div>
 <p class="muted"><small>Saved only in this browser on this device. This is not a cloud backup; clearing browser data deletes it. Limits: .csv files up to 5 MB and 50,000 rows.</small></p>
 <h2>2. Upload data</h2>
-<div class="row"><div><label for="gscfile">Search Console CSV (needs Clicks and Impressions columns)</label><input id="gscfile" type="file" accept=".csv"></div>
+<div class="row"><div><label for="gscfile">Search Console CSV (you can pick Queries.csv and Pages.csv together)</label><input id="gscfile" type="file" multiple accept=".csv"></div>
 <div><label for="crawlfile">Crawl CSV (needs an Address or URL column)</label><input id="crawlfile" type="file" accept=".csv"></div></div>
 <h2>3. Data quality report</h2><div id="quality"></div>
-<h2>4. Dashboard</h2><div id="cards" class="cards"></div>
+<h2>4. Dashboard</h2><div id="cards" class="cards"></div><div id="chart" class="box"></div>
 <p class="muted"><small>Average position is weighted by impressions. Overall CTR is total clicks divided by total impressions. Metrics only appear when the matching file is uploaded.</small></p>
 <h2>5. Action plan</h2>
 <div class="row"><div><label for="q">Search</label><input id="q" type="search"></div>
@@ -33,5 +33,5 @@ button{cursor:pointer;background:var(--acc);color:#fff;border:0}button.sec{backg
 <div><label for="fs">Status</label><select id="fs"><option value="">All</option><option>To Do</option><option>In Progress</option><option>Completed</option><option>Ignored</option></select></div>
 <button id="export">Export filtered tasks (CSV)</button></div>
 <div class="wrap"><table><thead><tr><th>Priority</th><th>Category</th><th>Affected</th><th>Finding</th><th>Confidence</th><th>Effort</th><th>Status</th><th>Owner</th></tr></thead><tbody id="rows"></tbody></table></div>
-<p class="muted"><small>Priority comes from a fixed scoring formula, not from AI. Findings marked "review flag" need human judgement. Nothing here predicts rankings or traffic. Internal linking, redirect chains, canonicals and AI explanations are not built yet.</small></p>
+<p class="muted"><small>Priority comes from a fixed scoring formula, not from AI. Findings marked "review flag" need human judgement. Nothing here predicts rankings or traffic. Not built yet: internal-link suggestions, redirect-chain detection, keyword volume, backlinks, Core Web Vitals, live Search Console connection and AI explanations.</small></p>
 </main><script type="module" src="app.js"></script></body></html>

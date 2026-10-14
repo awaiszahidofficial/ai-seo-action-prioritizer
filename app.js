@@ -1,7 +1,9 @@
 import { parseCsv, detectColumns, CRAWL_ALIASES, toNumber } from './core/csv.js';
 import { importGsc, totals } from './core/gsc.js';
 import { crawlFindings, gscOpportunities } from './core/rules.js';
-import { score } from './core/score.js';
+import { extraCrawl } from './core/crawlmore.js';
+import { gscFindings } from './core/opportunities.js';
+import { PLAY } from './core/playbooks.js';
 import { toCsv } from './core/export.js';
 const $ = id => document.getElementById(id), KEY = 'seo-prioritizer-v1', MAX_BYTES = 5e6, MAX_LINES = 50000;
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -17,24 +19,19 @@ function importCrawl(text) {
     const url = (g(r, 'url') || '').trim();
     if (!/^https?:\/\//i.test(url)) return skipped.push({ line: i + 2, reason: 'invalid URL' });
     if (seen.has(url)) return skipped.push({ line: i + 2, reason: 'duplicate URL' }); seen.add(url);
-    rows.push({ url, status: toNumber(g(r, 'status')) ?? undefined, title: g(r, 'title'), meta: g(r, 'meta'), h1: g(r, 'h1') });
+    rows.push({ url, status: toNumber(g(r, 'status')) ?? undefined, title: g(r, 'title'), meta: g(r, 'meta'), h1: g(r, 'h1'), indexability: g(r, 'indexability'), canonical: g(r, 'canonical'), wordCount: toNumber(g(r, 'wordCount')) ?? undefined, inlinks: toNumber(g(r, 'inlinks')) ?? undefined });
   });
-  return { rows, report: { accepted: rows.length, skipped, missing: ['status', 'title', 'meta'].filter(f => m[f] === undefined) } };
+  return { rows, report: { accepted: rows.length, skipped, missing: ['status', 'title', 'meta'].filter(f => m[f] === undefined), cols: Object.keys(m) } };
 }
+function gscBase() { if (!state.gsc) return []; const R = state.gsc.rows, pg = R.filter(r => r.page && !r.query); return pg.length ? pg : R; }
 function findings() {
-  const out = [];
-  if (state.crawl) out.push(...crawlFindings(state.crawl.rows));
-  if (state.gsc) {
-    const o = gscOpportunities(state.gsc.rows);
-    if (o.length) out.push({ id: 'gsc-low-ctr', category: 'Search Console', kind: 'review', urls: o.map(x => x.page),
-      finding: `${o.length} page(s) have high impressions but CTR below half the site-wide CTR`,
-      evidence: `Top: ${o[0].page} - ${o[0].impressions} impressions, ${(o[0].ctr * 100).toFixed(2)}% CTR, avg position ${o[0].position.toFixed(1)}`,
-      why: 'These pages may have room for better snippets or content alignment.',
-      nextSteps: 'Check query intent, brand vs non-brand queries, position and SERP features before changing titles.',
-      limitations: 'Low CTR can be normal (brand queries, SERP features, position). This is a review flag only, not a diagnosis. No traffic gain is implied.',
-      effortLabel: 'Low', confidence: 0.5, ...score({ severity: 2, impact: 3, affected: o.length, confidence: 0.5, evidence: 0.6, effort: 2 }) });
+  const out = [], c = (state.crawl && state.crawl.report.cols) || [];
+  if (state.crawl) {
+    const drop = new Set([...(c.includes('title') ? [] : ['title-missing', 'title-duplicate']), ...(c.includes('meta') ? [] : ['meta-missing'])]);
+    out.push(...crawlFindings(state.crawl.rows).filter(f => !drop.has(f.id)), ...extraCrawl(state.crawl.rows));
   }
-  return out.sort((a, b) => b.score - a.score);
+  if (state.gsc) out.push(...gscFindings(state.gsc.rows, totals(gscBase())));
+  return out.map(f => ({ ...f, ...PLAY[f.id] })).sort((a, b) => b.score - a.score);
 }
 const task = id => state.tasks[id] ??= { status: 'To Do', owner: '', notes: '' };
 function visible() {
@@ -54,7 +51,7 @@ function render() {
   $('pname').value = state.name; $('purl').value = state.url;
   $('demo').hidden = !state.demo;
   $('quality').innerHTML = report(state.gsc, 'Search Console file') + report(state.crawl, 'Crawl file') || '<p class="muted">No data yet. Upload files or load the demo data.</p>';
-  const all = findings(), t = state.gsc ? totals(state.gsc.rows) : null, done = all.filter(f => task(f.id).status === 'Completed').length;
+  const all = findings(), t = state.gsc ? totals(gscBase()) : null, done = all.filter(f => task(f.id).status === 'Completed').length;
   const card = (k, v, tip) => `<div class="card" title="${esc(tip || '')}"><div class="k">${k}</div><div class="v">${v}</div></div>`;
   $('cards').innerHTML = [card('URLs analyzed', state.crawl ? state.crawl.rows.length : 'no crawl data'), card('Findings', all.length),
     card('P1 / P2 actions', all.filter(f => f.priority === 'P1').length + ' / ' + all.filter(f => f.priority === 'P2').length),
@@ -62,6 +59,8 @@ function render() {
     card('Overall CTR', t && t.ctr !== null ? (t.ctr * 100).toFixed(2) + '%' : 'n/a', 'Total clicks divided by total impressions'),
     card('Avg position', t && t.avgPosition !== null ? t.avgPosition.toFixed(1) : 'n/a', 'Weighted by impressions'),
     card('Completed / pending', done + ' / ' + (all.length - done))].join('');
+  const pc = ['P1', 'P2', 'P3', 'P4'].map(p => [p, all.filter(f => f.priority === p).length]), mx = Math.max(1, ...pc.map(x => x[1]));
+  $('chart').innerHTML = all.length ? '<b>Tasks by priority</b>' + pc.map(([p, n]) => `<div class="bar"><span>${p}</span><i style="width:${n / mx * 100}%"></i><em>${n}</em></div>`).join('') : '';
   const rows = visible();
   $('rows').innerHTML = rows.map(f => { const k = task(f.id);
     return `<tr><td><b>${f.priority}</b><br><small>score ${f.score}</small></td><td>${esc(f.category)}<br><small>${f.kind === 'error' ? 'detected error' : 'review flag'}</small></td>
@@ -69,9 +68,9 @@ function render() {
     <td><select data-id="${esc(f.id)}" data-f="status">${['To Do', 'In Progress', 'Completed', 'Ignored'].map(s => `<option${s === k.status ? ' selected' : ''}>${s}</option>`).join('')}</select></td>
     <td><input data-id="${esc(f.id)}" data-f="owner" value="${esc(k.owner)}" placeholder="owner" aria-label="Owner"></td></tr>
     <tr class="det"><td colspan="8"><details><summary>Details, evidence and notes</summary>
-    <p><b>Evidence:</b> ${esc(f.evidence)}</p><p><b>Why it matters:</b> ${esc(f.why)}</p><p><b>Next steps:</b> ${esc(f.nextSteps)}</p>
+    <p><b>Evidence:</b> ${esc(f.evidence)}</p><p><b>Why it matters:</b> ${esc(f.why)}</p>${f.steps ? `<p><b>How to fix it, step by step:</b></p><ol>${f.steps.map(x => `<li>${esc(x)}</li>`).join('')}</ol><p><b>How to check it worked:</b> ${esc(f.verify)}</p><p><b>Watch out:</b> ${esc(f.risks)}</p>` : `<p><b>Next steps:</b> ${esc(f.nextSteps)}</p>`}
     <p><b>Limitations:</b> ${esc(f.limitations)}</p><p><b>Why this priority:</b> score ${f.score} from severity, impact, URLs affected, confidence, evidence strength and effort. P1 also needs high severity and confidence.</p>
-    <p><b>Affected URLs:</b><br>${f.urls.slice(0, 25).map(esc).join('<br>')}${f.urls.length > 25 ? `<br>...and ${f.urls.length - 25} more` : ''}</p>
+    <p><b>Affected items:</b><br>${f.urls.slice(0, 25).map(esc).join('<br>')}${f.urls.length > 25 ? `<br>...and ${f.urls.length - 25} more` : ''}</p>
     <textarea data-id="${esc(f.id)}" data-f="notes" placeholder="Notes" aria-label="Notes">${esc(k.notes)}</textarea></details></td></tr>`; }).join('') ||
     `<tr><td colspan="8" class="muted">${all.length ? 'No tasks match the filters.' : 'No findings yet. Upload data to generate tasks.'}</td></tr>`;
 }
@@ -84,7 +83,13 @@ async function readFile(file) {
   return text;
 }
 const unDemo = () => { if (state.demo) { state.gsc = state.crawl = null; state.tasks = {}; state.demo = false; } };
-$('gscfile').onchange = async e => { const t = await readFile(e.target.files[0]); if (t === null) return; unDemo(); state.gsc = importGsc(t); save(); render(); };
+$('gscfile').onchange = async e => {
+  const files = [...e.target.files]; if (!files.length) return; const rows = [], sk = [], ctr = new Set(), miss = []; let bad = false;
+  for (const f of files) { const t = await readFile(f); if (t === null) { bad = true; continue; } const r = importGsc(t);
+    rows.push(...r.rows); sk.push(...r.report.skipped.map(x => ({ ...x, reason: f.name + ': ' + x.reason }))); ctr.add(r.report.ctrInterpretation); miss.push(...r.report.missingFields); }
+  if (!rows.length && bad) return; unDemo();
+  state.gsc = { rows, report: { accepted: rows.length, skipped: sk, ctrInterpretation: [...ctr].join(' / '), missingFields: [...new Set(miss)] } }; save(); render();
+};
 $('crawlfile').onchange = async e => { const t = await readFile(e.target.files[0]); if (t === null) return; unDemo(); state.crawl = importCrawl(t); save(); render(); };
 $('pname').onchange = e => { state.name = e.target.value; save(); }; $('purl').onchange = e => { state.url = e.target.value; save(); };
 ['q', 'fp', 'fs'].forEach(i => $(i).oninput = render);
